@@ -41,10 +41,38 @@ class SheetsWriter:
         # Уплощаем данные: каждый товар = отдельная строка
         rows = self._flatten_data(data, file_link)
 
-        # Записываем строки в таблицу
-        self.sheet.append_rows(rows, value_input_option='USER_ENTERED')
+        # Находим первую пустую строку в колонке A
+        # Это гарантирует запись с начала строки, а не со смещением
+        all_values = self.sheet.col_values(1)  # Получаем все значения из колонки A
+        next_row = len(all_values) + 1  # Первая пустая строка
 
-        logger.info(f"Записано {len(rows)} строк в Google Sheets")
+        # Формируем диапазон для записи (например: A5:Z7 для 3 строк)
+        start_cell = f"A{next_row}"
+        end_col_letter = self._num_to_col_letter(len(rows[0]))  # Последняя колонка
+        end_row = next_row + len(rows) - 1
+        range_name = f"{start_cell}:{end_col_letter}{end_row}"
+
+        # Записываем строки в указанный диапазон
+        self.sheet.update(range_name, rows, value_input_option='USER_ENTERED')
+
+        logger.info(f"Записано {len(rows)} строк в Google Sheets (диапазон: {range_name})")
+
+    def _num_to_col_letter(self, n):
+        """
+        Конвертировать номер колонки в букву (1 -> A, 27 -> AA и т.д.)
+
+        Args:
+            n (int): Номер колонки (начиная с 1)
+
+        Returns:
+            str: Буквенное обозначение колонки
+        """
+        result = ""
+        while n > 0:
+            n -= 1
+            result = chr(65 + (n % 26)) + result
+            n //= 26
+        return result
 
     def _flatten_data(self, data, file_link):
         """
