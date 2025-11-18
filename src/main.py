@@ -3,11 +3,11 @@
 Точка входа для Yandex Cloud Function
 """
 import logging
-from config import Config
-from file_processor import FileProcessor
-from llm_handler import LLMHandler
-from sheets_writer import SheetsWriter
-from validator import Validator
+from .config import Config
+from .file_processor import FileProcessor
+from .llm_handler import LLMHandler
+from .sheets_writer import SheetsWriter
+from .validator import Validator
 
 # Настройка логирования
 logging.basicConfig(

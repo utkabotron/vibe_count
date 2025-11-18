@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 import yadisk
 
-from config import Config
+from .config import Config
 
 logger = logging.getLogger(__name__)
 
