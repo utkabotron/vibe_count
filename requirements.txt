@@ -17,9 +17,8 @@ openpyxl>=3.0.0
 # Image processing
 Pillow>=10.0.0
 
-# PDF processing (optional, if needed)
-PyPDF2>=3.0.0
-pdf2image>=1.16.0
+# PDF processing
+pdfplumber>=0.10.0
 
 # Utilities
 requests>=2.31.0

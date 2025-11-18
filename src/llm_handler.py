@@ -82,9 +82,10 @@ class LLMHandler:
         Returns:
             dict: Извлеченные данные в формате JSON
         """
-        if file_type in ['image', 'pdf']:
+        if file_type == 'image':
             return self._process_image(file_path)
-        elif file_type in ['docx', 'xlsx']:
+        elif file_type in ['pdf', 'docx', 'xlsx']:
+            # PDF, DOCX, XLSX обрабатываем через текстовое извлечение
             return self._process_text(file_path)
         else:
             raise ValueError(f"Неподдерживаемый тип файла: {file_type}")
@@ -191,7 +192,9 @@ class LLMHandler:
             # Определяем тип файла и извлекаем текст
             file_ext = file_path.suffix.lower()
 
-            if file_ext in ['.doc', '.docx']:
+            if file_ext == '.pdf':
+                text = self._extract_text_from_pdf(file_path)
+            elif file_ext in ['.doc', '.docx']:
                 text = self._extract_text_from_docx(file_path)
             elif file_ext in ['.xls', '.xlsx']:
                 text = self._extract_text_from_xlsx(file_path)
@@ -225,6 +228,40 @@ class LLMHandler:
 
         except Exception as e:
             logger.error(f"Ошибка при обработке текстового документа: {e}")
+            raise
+
+    def _extract_text_from_pdf(self, file_path):
+        """Извлечь текст из PDF файла с помощью pdfplumber"""
+        try:
+            import pdfplumber
+
+            text_parts = []
+
+            with pdfplumber.open(file_path) as pdf:
+                for i, page in enumerate(pdf.pages, 1):
+                    # Извлекаем текст страницы
+                    text = page.extract_text()
+                    if text:
+                        text_parts.append(f"=== Страница {i} ===")
+                        text_parts.append(text)
+
+                    # Извлекаем таблицы
+                    tables = page.extract_tables()
+                    if tables:
+                        for j, table in enumerate(tables, 1):
+                            text_parts.append(f"=== Таблица {j} на странице {i} ===")
+                            for row in table:
+                                row_text = ' | '.join(str(cell) if cell else '' for cell in row)
+                                if row_text.strip():
+                                    text_parts.append(row_text)
+
+            text = '\n'.join(text_parts)
+            num_pages = len(pdf.pages) if hasattr(pdf, 'pages') else 0
+            logger.info(f"Извлечено {len(text)} символов из PDF ({num_pages} страниц)")
+            return text
+
+        except Exception as e:
+            logger.error(f"Ошибка при извлечении текста из PDF: {e}")
             raise
 
     def _extract_text_from_docx(self, file_path):
