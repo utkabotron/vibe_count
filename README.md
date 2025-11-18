@@ -101,18 +101,31 @@ GOOGLE_CREDENTIALS_PATH=path/to/credentials.json
 python src/main.py
 ```
 
-### Развертывание в Yandex Cloud Functions
+### Развертывание на Timeweb VPS
 
-1. Упакуйте код в ZIP-архив:
+1. Подключитесь к VPS по SSH
+2. Клонируйте репозиторий:
 ```bash
-zip -r function.zip src/ requirements.txt
+git clone https://github.com/utkabotron/vibe_count.git
+cd vibe_count
 ```
 
-2. Создайте функцию в Yandex Cloud Console
-3. Загрузите ZIP-архив
-4. Настройте переменные окружения
-5. Установите точку входа: `src.main.handler`
-6. Настройте триггер (Timer) на запуск каждые 5-10 минут
+3. Создайте виртуальное окружение:
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+4. Настройте `.env` и загрузите credentials
+5. Создайте скрипт `run.sh` и настройте cron:
+```bash
+chmod +x run.sh
+crontab -e
+# Добавьте: */10 * * * * /path/to/vibe_count/run.sh
+```
+
+6. Проверьте логи: `tail -f logs/cron.log`
 
 ## Структура данных
 
@@ -183,9 +196,10 @@ zip -r function.zip src/ requirements.txt
 
 ## Стоимость
 
-- **Yandex Cloud Functions:** Free Tier (до 1M вызовов/месяц)
+- **Timeweb VPS:** ~200-300₽/месяц (минимальный тариф)
 - **OpenAI API:** ~$5-15/месяц при 150 документах
 - **Google Sheets:** Бесплатно
+- **Яндекс.Диск:** Бесплатно (10 ГБ в тарифе)
 
 ## Разработка
 
