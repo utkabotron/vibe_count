@@ -182,11 +182,24 @@ class FileProcessor:
         """
         try:
             if not self.client.exists(folder_path):
-                # Создаем папку рекурсивно
-                self.client.mkdir(folder_path, parents=True)
-                logger.info(f"Создана папка: {folder_path}")
+                # Создаем папки по частям (для надежности)
+                parts = folder_path.split('/')
+                current_path = ""
+
+                for part in parts:
+                    if not part or part == "disk:":
+                        if part == "disk:":
+                            current_path = "disk:"
+                        continue
+
+                    current_path = f"{current_path}/{part}" if current_path else part
+
+                    if not self.client.exists(current_path):
+                        self.client.mkdir(current_path)
+                        logger.info(f"Создана папка: {current_path}")
         except Exception as e:
-            logger.warning(f"Ошибка при создании папки {folder_path}: {e}")
+            logger.error(f"Ошибка при создании папки {folder_path}: {e}")
+            raise
 
     def move_to_error(self, file_info, errors):
         """
