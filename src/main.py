@@ -17,13 +17,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def handler(event, context):
+def handler(event=None, context=None):
     """
-    Обработчик для Yandex Cloud Function
+    Обработчик документов (для Yandex Cloud Function и REST API)
 
     Args:
-        event: Событие триггера
-        context: Контекст выполнения
+        event: Событие триггера (опционально)
+        context: Контекст выполнения (опционально)
 
     Returns:
         dict: Статус выполнения
