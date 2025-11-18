@@ -20,9 +20,9 @@ class Config:
     YANDEX_OAUTH_TOKEN = os.getenv('YANDEX_OAUTH_TOKEN')
 
     # Yandex Disk папки
-    YANDEX_INCOMING_FOLDER = os.getenv('YANDEX_INCOMING_FOLDER', '/Входящие')
-    YANDEX_PROCESSED_FOLDER = os.getenv('YANDEX_PROCESSED_FOLDER', '/Обработанные')
-    YANDEX_ERROR_FOLDER = os.getenv('YANDEX_ERROR_FOLDER', '/Ошибки')
+    YANDEX_INCOMING_FOLDER = os.getenv('YANDEX_INCOMING_FOLDER', 'disk:/vibe/Входящие')
+    YANDEX_PROCESSED_FOLDER = os.getenv('YANDEX_PROCESSED_FOLDER', 'disk:/vibe/Архив')
+    YANDEX_ERROR_FOLDER = os.getenv('YANDEX_ERROR_FOLDER', 'disk:/vibe/Ошибки')
 
     # OpenAI API
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
