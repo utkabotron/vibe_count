@@ -129,10 +129,10 @@ class Validator:
         if all(x is not None for x in [quantity, price_unit, total_sum]):
             expected_sum = quantity * price_unit
             if abs(expected_sum - total_sum) > self.tolerance:
-                errors.append(
-                    f"Товар {index}: ошибка расчета. "
+                warnings.append(
+                    f"Товар {index}: расхождение в расчете. "
                     f"{quantity} × {price_unit} = {expected_sum}, "
-                    f"но указано {total_sum}"
+                    f"указано {total_sum} (возможна скидка/надбавка)"
                 )
 
         # Проверка НДС
@@ -146,10 +146,10 @@ class Validator:
         if all(x is not None for x in [total_sum, vat_rate, vat_amount]):
             expected_vat = total_sum * (vat_rate / 100)
             if abs(expected_vat - vat_amount) > self.tolerance:
-                errors.append(
-                    f"Товар {index}: ошибка расчета НДС. "
+                warnings.append(
+                    f"Товар {index}: расхождение в НДС. "
                     f"{total_sum} × {vat_rate}% = {expected_vat}, "
-                    f"но указано {vat_amount}"
+                    f"указано {vat_amount}"
                 )
 
         return errors, warnings
@@ -177,17 +177,17 @@ class Validator:
         # Проверка: сумма товаров = сумма без НДС
         if total_without_vat is not None:
             if abs(calc_total_sum - total_without_vat) > self.tolerance:
-                errors.append(
-                    f"Несоответствие суммы без НДС: "
+                warnings.append(
+                    f"Расхождение суммы без НДС: "
                     f"сумма товаров = {calc_total_sum}, "
-                    f"указано = {total_without_vat}"
+                    f"указано = {total_without_vat} (возможна скидка/надбавка)"
                 )
 
         # Проверка: сумма НДС товаров = общий НДС
         if total_vat is not None:
             if abs(calc_total_vat - total_vat) > self.tolerance:
-                errors.append(
-                    f"Несоответствие суммы НДС: "
+                warnings.append(
+                    f"Расхождение суммы НДС: "
                     f"сумма НДС товаров = {calc_total_vat}, "
                     f"указано = {total_vat}"
                 )
@@ -196,10 +196,10 @@ class Validator:
         if all(x is not None for x in [total_without_vat, total_vat, total_amount]):
             expected_total = total_without_vat + total_vat
             if abs(expected_total - total_amount) > self.tolerance:
-                errors.append(
-                    f"Ошибка расчета итоговой суммы: "
+                warnings.append(
+                    f"Расхождение итоговой суммы: "
                     f"{total_without_vat} + {total_vat} = {expected_total}, "
-                    f"но указано {total_amount}"
+                    f"указано {total_amount}"
                 )
 
         return errors, warnings
