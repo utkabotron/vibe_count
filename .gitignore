@@ -59,3 +59,6 @@ htmlcov/
 
 # Yandex Cloud Function artifacts
 function.zip
+
+# Document files (processed invoices, etc.)
+SS/
