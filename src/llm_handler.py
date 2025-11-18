@@ -83,9 +83,18 @@ class LLMHandler:
             dict: Извлеченные данные в формате JSON
         """
         if file_type == 'image':
+            # Изображения обрабатываем через GPT-4o Vision
             return self._process_image(file_path)
-        elif file_type in ['pdf', 'docx', 'xlsx']:
-            # PDF, DOCX, XLSX обрабатываем через текстовое извлечение
+        elif file_type == 'pdf':
+            # PDF: определяем автоматически скан или текстовый документ
+            if self._is_scanned_pdf(file_path):
+                logger.info(f"PDF определен как скан, используем GPT-4o Vision")
+                return self._process_image(file_path)
+            else:
+                logger.info(f"PDF определен как текстовый документ, используем GPT-4 Turbo")
+                return self._process_text(file_path)
+        elif file_type in ['docx', 'xlsx']:
+            # DOCX, XLSX обрабатываем через текстовое извлечение
             return self._process_text(file_path)
         else:
             raise ValueError(f"Неподдерживаемый тип файла: {file_type}")
@@ -177,6 +186,50 @@ class LLMHandler:
         except Exception as e:
             logger.error(f"Ошибка при обработке изображения: {e}")
             raise
+
+    def _is_scanned_pdf(self, file_path, min_text_chars=100):
+        """
+        Определить, является ли PDF-файл сканом или текстовым документом
+
+        Args:
+            file_path (Path): Путь к PDF файлу
+            min_text_chars (int): Минимальное количество символов для текстового PDF (по умолчанию 100)
+
+        Returns:
+            bool: True если это скан (мало текста), False если текстовый документ
+        """
+        try:
+            import pdfplumber
+
+            # Пробуем извлечь текст из первой страницы
+            with pdfplumber.open(file_path) as pdf:
+                if not pdf.pages:
+                    logger.warning("PDF не содержит страниц, считаем сканом")
+                    return True
+
+                # Извлекаем текст только с первой страницы для быстрой проверки
+                first_page = pdf.pages[0]
+                text = first_page.extract_text()
+
+                if not text:
+                    logger.info(f"PDF не содержит извлекаемого текста, это скан")
+                    return True
+
+                # Считаем количество непробельных символов
+                text_length = len(text.strip())
+                logger.info(f"Извлечено {text_length} символов из первой страницы PDF")
+
+                if text_length < min_text_chars:
+                    logger.info(f"Текста менее {min_text_chars} символов, считаем это сканом")
+                    return True
+                else:
+                    logger.info(f"Текста достаточно ({text_length} символов), это текстовый PDF")
+                    return False
+
+        except Exception as e:
+            logger.error(f"Ошибка при определении типа PDF: {e}, считаем сканом по умолчанию")
+            # В случае ошибки считаем скаом и используем Vision API как fallback
+            return True
 
     def _process_text(self, file_path):
         """
