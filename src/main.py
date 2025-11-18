@@ -66,10 +66,11 @@ def handler(event=None, context=None):
         if validation_result['errors']:
             logger.error(f"Ошибки валидации: {validation_result['errors']}")
             # Перемещаем файл в папку Ошибки
-            # ВРЕМЕННО ОТКЛЮЧЕНО из-за прав доступа OAuth
-            # file_processor.move_to_error(file_info, validation_result['errors'])
-            logger.warning("Перемещение файла с ошибками отключено - файл остается в /Входящие")
-            # Продолжаем обработку несмотря на ошибки валидации для тестирования
+            file_processor.move_to_error(file_info, validation_result['errors'])
+            return {
+                'statusCode': 400,
+                'body': f"Файл {file_info['name']} перемещен в /Ошибки из-за ошибок валидации"
+            }
 
         if validation_result['warnings']:
             logger.warning(f"Предупреждения: {validation_result['warnings']}")
@@ -82,10 +83,9 @@ def handler(event=None, context=None):
         logger.info("Данные записаны в Google Sheets")
 
         # Шаг 7: Архивация файла
-        # ВРЕМЕННО ОТКЛЮЧЕНО из-за прав доступа OAuth
-        # document_date = extracted_data['document_info']['invoice_date']
-        # file_processor.move_to_archive(file_info, document_date)
-        logger.info(f"Файл обработан успешно (перемещение отключено)")
+        document_date = extracted_data['document_info']['invoice_date']
+        file_processor.move_to_archive(file_info, document_date)
+        logger.info(f"Файл успешно обработан и перемещен в архив")
 
         return {
             'statusCode': 200,
