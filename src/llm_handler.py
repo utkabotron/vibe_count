@@ -101,20 +101,41 @@ class LLMHandler:
         """
         try:
             import base64
+            from io import BytesIO
 
-            # Читаем файл и конвертируем в base64
-            with open(file_path, 'rb') as image_file:
-                image_data = base64.b64encode(image_file.read()).decode('utf-8')
-
-            # Определяем MIME тип
             file_ext = file_path.suffix.lower()
-            mime_types = {
-                '.jpg': 'image/jpeg',
-                '.jpeg': 'image/jpeg',
-                '.png': 'image/png',
-                '.pdf': 'application/pdf'
-            }
-            mime_type = mime_types.get(file_ext, 'image/jpeg')
+
+            # Для PDF конвертируем в изображение
+            if file_ext == '.pdf':
+                from pdf2image import convert_from_path
+
+                logger.info("Конвертация PDF в изображение")
+                # Конвертируем первую страницу PDF в изображение
+                images = convert_from_path(file_path, first_page=1, last_page=1, dpi=200)
+
+                if not images:
+                    raise ValueError("Не удалось конвертировать PDF в изображение")
+
+                # Сохраняем изображение в BytesIO
+                img_byte_arr = BytesIO()
+                images[0].save(img_byte_arr, format='PNG')
+                img_byte_arr.seek(0)
+
+                # Конвертируем в base64
+                image_data = base64.b64encode(img_byte_arr.read()).decode('utf-8')
+                mime_type = 'image/png'
+                logger.info("PDF успешно конвертирован в PNG")
+            else:
+                # Для обычных изображений читаем напрямую
+                with open(file_path, 'rb') as image_file:
+                    image_data = base64.b64encode(image_file.read()).decode('utf-8')
+
+                mime_types = {
+                    '.jpg': 'image/jpeg',
+                    '.jpeg': 'image/jpeg',
+                    '.png': 'image/png'
+                }
+                mime_type = mime_types.get(file_ext, 'image/jpeg')
 
             # Вызываем OpenAI API
             response = self.client.chat.completions.create(
