@@ -49,26 +49,26 @@ async def auto_process_loop():
                 await asyncio.sleep(processing_status["check_interval"])
                 continue
 
-            # Запускаем обработку
+            # Запускаем обработку в отдельном потоке
             logger.debug(f"Проверка папки /Входящие")
-            result = handler()
+            processing_status["is_processing"] = True
 
-            # Если файл был обработан
+            # Запускаем синхронный handler в отдельном потоке
+            result = await asyncio.to_thread(handler)
+
+            # Обработка результата
+            processing_status["is_processing"] = False
+            processing_status["last_run"] = datetime.now().isoformat()
+            processing_status["last_result"] = result
+
             if result.get("statusCode") == 200:
-                processing_status["is_processing"] = False
-                processing_status["last_run"] = datetime.now().isoformat()
-                processing_status["last_result"] = result
                 processing_status["total_processed"] += 1
                 logger.info(f"Автоматически обработан файл: {result.get('body')}")
             elif result.get("statusCode") == 400:
-                # Файл с ошибками валидации
-                processing_status["is_processing"] = False
-                processing_status["last_run"] = datetime.now().isoformat()
-                processing_status["last_result"] = result
                 logger.warning(f"Файл с ошибками: {result.get('body')}")
             else:
-                # Нет файлов для обработки - это нормально
-                processing_status["is_processing"] = False
+                # Нет файлов для обработки
+                logger.debug("Нет файлов для обработки")
 
         except Exception as e:
             processing_status["is_processing"] = False
