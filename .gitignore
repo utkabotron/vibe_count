@@ -50,6 +50,7 @@ logs/
 tmp/
 temp/
 *.tmp
+temp
 
 # Testing
 .pytest_cache/

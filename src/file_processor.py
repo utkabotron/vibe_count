@@ -65,8 +65,23 @@ class FileProcessor:
         Returns:
             Path: Путь к скачанному файлу
         """
-        # TODO: Реализовать скачивание файла
-        pass
+        try:
+            # Создаем временную директорию если её нет
+            temp_dir = Path('temp')
+            temp_dir.mkdir(exist_ok=True)
+
+            # Локальный путь для сохранения
+            local_path = temp_dir / file_info['name']
+
+            # Скачиваем файл
+            self.client.download(file_info['path'], str(local_path))
+
+            logger.info(f"Файл скачан: {file_info['name']} ({file_info['size']} байт)")
+            return local_path
+
+        except Exception as e:
+            logger.error(f"Ошибка при скачивании файла: {e}")
+            raise
 
     def detect_file_type(self, filename):
         """
@@ -101,8 +116,30 @@ class FileProcessor:
         Returns:
             str: Публичная ссылка
         """
-        # TODO: Реализовать получение публичной ссылки
-        pass
+        try:
+            file_path = file_info['path']
+
+            # Проверяем, есть ли уже публичная ссылка
+            try:
+                meta = self.client.get_meta(file_path)
+                if hasattr(meta, 'public_url') and meta.public_url:
+                    logger.info(f"Использована существующая публичная ссылка")
+                    return meta.public_url
+            except:
+                pass
+
+            # Публикуем файл и получаем ссылку
+            self.client.publish(file_path)
+            meta = self.client.get_meta(file_path)
+            public_url = meta.public_url
+
+            logger.info(f"Создана публичная ссылка для файла: {file_info['name']}")
+            return public_url
+
+        except Exception as e:
+            logger.error(f"Ошибка при получении публичной ссылки: {e}")
+            # Возвращаем альтернативную ссылку (прямой доступ через API)
+            return f"https://disk.yandex.ru/client/disk{file_info['path']}"
 
     def move_to_archive(self, file_info, document_date):
         """
@@ -112,8 +149,44 @@ class FileProcessor:
             file_info (dict): Информация о файле
             document_date (str): Дата документа в формате DD.MM.YYYY
         """
-        # TODO: Реализовать перемещение в архив
-        pass
+        try:
+            # Парсим дату документа
+            date_obj = datetime.strptime(document_date, '%d.%m.%Y')
+            year = date_obj.strftime('%Y')
+            month = date_obj.strftime('%m')
+
+            # Формируем путь к архивной папке
+            archive_folder = f"{Config.YANDEX_PROCESSED_FOLDER}/{year}/{month}"
+
+            # Создаем структуру папок если её нет
+            self._ensure_folder_exists(archive_folder)
+
+            # Целевой путь для файла
+            destination = f"{archive_folder}/{file_info['name']}"
+
+            # Перемещаем файл
+            self.client.move(file_info['path'], destination, overwrite=True)
+
+            logger.info(f"Файл перемещен в архив: {destination}")
+
+        except Exception as e:
+            logger.error(f"Ошибка при перемещении файла в архив: {e}")
+            raise
+
+    def _ensure_folder_exists(self, folder_path):
+        """
+        Убедиться что папка существует, создать если нет
+
+        Args:
+            folder_path (str): Путь к папке
+        """
+        try:
+            if not self.client.exists(folder_path):
+                # Создаем папку рекурсивно
+                self.client.mkdir(folder_path, parents=True)
+                logger.info(f"Создана папка: {folder_path}")
+        except Exception as e:
+            logger.warning(f"Ошибка при создании папки {folder_path}: {e}")
 
     def move_to_error(self, file_info, errors):
         """
@@ -123,5 +196,23 @@ class FileProcessor:
             file_info (dict): Информация о файле
             errors (list): Список ошибок
         """
-        # TODO: Реализовать перемещение в папку ошибок
-        pass
+        try:
+            # Убеждаемся что папка Ошибки существует
+            self._ensure_folder_exists(Config.YANDEX_ERROR_FOLDER)
+
+            # Целевой путь для файла
+            destination = f"{Config.YANDEX_ERROR_FOLDER}/{file_info['name']}"
+
+            # Перемещаем файл
+            self.client.move(file_info['path'], destination, overwrite=True)
+
+            # Логируем ошибки
+            error_msg = '; '.join(errors) if isinstance(errors, list) else str(errors)
+            logger.error(
+                f"Файл перемещен в папку ошибок: {destination}\n"
+                f"Причина: {error_msg}"
+            )
+
+        except Exception as e:
+            logger.error(f"Ошибка при перемещении файла в папку ошибок: {e}")
+            raise
