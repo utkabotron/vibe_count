@@ -7,7 +7,7 @@ import logging
 from datetime import datetime
 
 # Импортируем наш обработчик
-from main import handler
+from .main import handler
 
 # Настройка логирования
 logging.basicConfig(
