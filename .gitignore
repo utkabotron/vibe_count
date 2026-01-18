@@ -62,3 +62,4 @@ function.zip
 
 # Document files (processed invoices, etc.)
 SS/
+fix_env.py
