@@ -19,6 +19,7 @@ Pillow>=10.0.0
 
 # PDF processing
 pdfplumber>=0.10.0
+pdf2image>=1.16.0
 
 # Utilities
 requests>=2.31.0
