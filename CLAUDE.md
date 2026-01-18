@@ -41,6 +41,27 @@ FastAPI-приложение с автоматической фоновой об
 - `sheets_writer.py` - Запись данных в Google Sheets (уплощение JSON, маппинг на колонки)
 - `validator.py` - Валидация данных (soft validation - расчетные ошибки = warnings, а не errors)
 
+## Структура проекта
+
+```
+/
+├── src/                        # Основной код приложения
+├── scripts/                    # Вспомогательные скрипты (см. scripts/README.md)
+│   ├── deployment/            # Деплой и настройка (deploy_simple.sh и др.)
+│   ├── testing/               # Тесты компонентов
+│   ├── diagnostics/           # Диагностика системы
+│   ├── maintenance/           # Обслуживание и обновления
+│   └── utilities/             # Вспомогательные утилиты
+├── docs/                       # Документация
+│   ├── reports/               # Отчеты о развертывании
+│   └── old/                   # Архивные планы разработки
+├── logs/                       # Логи приложения
+├── temp/                       # Временные файлы
+├── requirements.txt            # Python зависимости
+├── .env                        # Переменные окружения (не в git)
+└── vibecount-credentials-gsheets.json  # Google Sheets credentials (не в git)
+```
+
 ## Команды разработки
 
 ### Локальная разработка
@@ -52,68 +73,82 @@ pip install -r requirements.txt
 # Запуск обработчика однократно (обрабатывает один файл)
 python src/main.py
 
-# Запуск REST API с автообработкой
+# Запуск REST API с автообработкой (локально на порту 8000)
 python -m uvicorn src.api:app --host 0.0.0.0 --port 8000
 
 # Или через модуль
 python src/api.py
 ```
 
-### Работа с сервером (Timeweb VPS)
+### Работа с сервером (72.56.70.180)
+
+**Сервер:** 72.56.70.180
+**API порт:** 8001 (production)
+**API URL:** http://72.56.70.180:8001
 
 ```bash
-# Деплой на сервер
-python deploy_to_server.py
+# Деплой на сервер (автоматический)
+./scripts/deployment/deploy_simple.sh
 
 # Обновление кода на сервере
-python update_server.py
+python scripts/maintenance/update_server.py
 
 # Проверка логов API на сервере
-python check_api_logs.py
+python scripts/diagnostics/check_api_logs.py
 
-# Проверка логов обработки
-python check_logs.py
+# Диагностика сервера
+python scripts/diagnostics/diagnose_server.py
 
 # Перезапуск API на сервере
-python update_and_restart_api.py
+python scripts/maintenance/update_and_restart_api.py
+
+# Проверка статуса API
+curl http://72.56.70.180:8001/health
+curl http://72.56.70.180:8001/status
 ```
 
 ### Тестирование
 
 ```bash
 # Тест API
-python test_api.py
+python scripts/testing/test_api.py
+
+# Тест OpenAI API ключа
+python scripts/testing/test_openai.py
+
+# Тест Google Sheets доступа
+python scripts/testing/test_gsheets.py
 
 # Тест автоматической обработки
-python test_auto_processing.py
+python scripts/testing/test_auto_processing.py
 
 # Тест полного цикла
-python test_full_auto.py
+python scripts/testing/test_full_auto.py
 
 # Тест валидации
-python test_validation_fix.py
+python scripts/testing/test_validation_fix.py
 
 # Тест перемещения файлов
-python test_file_moving.py
+python scripts/testing/test_file_moving.py
 
 # Тест определения типа PDF (скан vs текстовый документ)
-python test_pdf_detection.py "/path/to/file.pdf"
+python scripts/testing/test_pdf_detection.py "/path/to/file.pdf"
 ```
 
 ### Работа с Яндекс.Диском
 
 ```bash
 # Создание структуры папок локально
-python create_yandex_folders.py
+python scripts/utilities/create_yandex_folders.py
 
 # Создание структуры папок на удаленном сервере
-python setup_yandex_folders_remote.py
+python scripts/deployment/setup_yandex_folders_remote.py
 
 # Проверка структуры Яндекс.Диска
-python check_yandex_structure.py
+python scripts/diagnostics/check_yandex_structure.py
 
 # Проверка прав доступа к Яндекс.Диску
-python test_yandex_permissions.py
+python scripts/testing/test_yandex_permissions.py
 ```
 
 ## Конфигурация
@@ -214,11 +249,65 @@ PDF файлы обрабатываются с **автоматическим о
 3. Положить `vibecount-credentials-gsheets.json` в корень проекта
 4. Запустить: `python src/api.py` или `python src/main.py`
 
-### Production (Timeweb VPS)
-- Используются деплой-скрипты: `deploy_to_server.py`, `update_server.py`
-- API запускается через systemd или supervisor
-- Автоматическая обработка включена по умолчанию
-- Мониторинг через `/status` эндпоинт
+### Production (сервер 72.56.70.180)
+
+**Автоматический деплой:**
+```bash
+./scripts/deployment/deploy_simple.sh
+```
+
+**Конфигурация:**
+- **Порт:** 8001 (избегает конфликта с nano-banana-api на порту 8000)
+- **Systemd сервис:** `/etc/systemd/system/vibe-count-api.service`
+- **Рабочая директория:** `/root/vibe_count`
+- **Пользователь:** root
+- **Автозапуск:** Включен (через systemd)
+
+**Systemd сервис:**
+```ini
+[Unit]
+Description=Vibe Count API
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/vibe_count
+Environment="PATH=/root/vibe_count/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/root/vibe_count/venv/bin/uvicorn src.api:app --host 0.0.0.0 --port 8001
+Restart=always
+RestartSec=10
+StandardOutput=append:/root/vibe_count/logs/api-output.log
+StandardError=append:/root/vibe_count/logs/api-error.log
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**ВАЖНО:** PATH должен включать `/usr/bin` для доступа к `pdfinfo` (poppler-utils)
+
+**Управление сервисом:**
+```bash
+# Проверить статус
+ssh root@72.56.70.180 "systemctl status vibe-count-api"
+
+# Перезапустить
+ssh root@72.56.70.180 "systemctl restart vibe-count-api"
+
+# Просмотр логов
+ssh root@72.56.70.180 "journalctl -u vibe-count-api -f"
+ssh root@72.56.70.180 "tail -f /root/vibe_count/logs/api-output.log"
+```
+
+**Мониторинг:**
+- API health: http://72.56.70.180:8001/health
+- Статус автообработки: http://72.56.70.180:8001/status
+- Логи: `/root/vibe_count/logs/`
+
+**Документация деплоя:**
+- `docs/reports/DEPLOYMENT_SUCCESS.md` - успешное развертывание
+- `docs/reports/PORT_CHANGE_SUMMARY.md` - изменение портов
+- `docs/reports/SERVER_CLEANUP_REPORT.md` - очистка сервера
 
 ## Типичные задачи
 
@@ -233,12 +322,12 @@ PDF файлы обрабатываются с **автоматическим о
 
 ### Изменение интервала автообработки
 ```bash
-curl -X POST http://your-server:8000/auto/interval/60
+curl -X POST http://72.56.70.180:8001/auto/interval/60
 ```
 
 ### Отключение автообработки
 ```bash
-curl -X POST http://your-server:8000/auto/disable
+curl -X POST http://72.56.70.180:8001/auto/disable
 ```
 
 ## Troubleshooting
@@ -262,7 +351,36 @@ curl -X POST http://your-server:8000/auto/disable
 - Проверить `GOOGLE_SHEETS_ID` в `.env`
 - Проверить путь к `vibecount-credentials-gsheets.json`
 
-### PDF не обрабатывается
-- Для `pdf2image` требуется установка `poppler-utils`:
-  - macOS: `brew install poppler`
-  - Ubuntu: `apt-get install poppler-utils`
+### PDF не обрабатывается с ошибкой "Unable to get page count"
+
+**Проблема:** Ошибка `Unable to get page count. Is poppler installed and in PATH?`
+
+**Причина:** `pdfinfo` (из пакета poppler-utils) не доступен в PATH для Python процесса
+
+**Решение:**
+
+1. **Проверить установку poppler-utils:**
+   ```bash
+   ssh root@72.56.70.180 "which pdfinfo"
+   # Должно вернуть: /usr/bin/pdfinfo
+   ```
+
+2. **Убедиться что PATH в systemd сервисе включает /usr/bin:**
+   ```bash
+   ssh root@72.56.70.180 "cat /etc/systemd/system/vibe-count-api.service | grep Environment"
+   # Должно быть: Environment="PATH=/root/vibe_count/venv/bin:/usr/local/bin:/usr/bin:/bin"
+   ```
+
+3. **Если PATH неправильный, исправить:**
+   ```bash
+   python scripts/maintenance/fix_systemd_path.py
+   ```
+
+4. **Установка poppler-utils (если отсутствует):**
+   - macOS: `brew install poppler`
+   - Ubuntu/Debian: `apt-get install -y poppler-utils`
+   - Сервер: `python scripts/maintenance/install_poppler.py`
+
+### Ошибка "FileNotFoundError: [Errno 2] No such file or directory: 'pdfinfo'"
+
+Это значит что systemd сервис не имеет доступа к `/usr/bin` в PATH. См. решение выше.
